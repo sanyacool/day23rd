@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+  <head>
+    <script src="https://code.createjs.com/createjs-2015.11.26.min.js"> </script>
+    <script src="https://code.createjs.com/easeljs-0.8.0.min.js"> </script>
+    <script src="https://code.createjs.com/tweenjs-0.6.2.min.js"> </script>
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"> </script>
+    <title>Canvas Animation</title>
+    <style>
+      #canvas {border: solid 1px black; cursor:none;}
+    </style>
+  </head> 
+  <body>
+    <canvas id="canvas"></canvas><br>
+    <script >
+		var socket = io();
+		stage = new createjs.Stage("canvas");
+		canvas = document.querySelector('canvas');
+		canvas.width = window.innerWidth - 50;
+		canvas.height = window.innerHeight - 50;
+		var circle;
+		var pointSheet = new createjs.SpriteSheet({
+				images: ["https://www.dover.uk.com/assets/images/forums/circle_default.png"],
+				frames: {width: 50, height: 50}
+		});
+		point = new createjs.Sprite(pointSheet, 1);
+		stage.addChild(point);
+		point.x = 0;
+		point.y = 0;
+		
+		socket.on('user connected', function(UserId){
+			circle = new createjs.Shape();
+			let radius = RandomNumb(20, 50);
+			let color = 'rgba(' + RandomNumb(0,255) + ',' + RandomNumb(0,255) + ',' + RandomNumb(0,255) + ',1)';
+			circle.graphics.beginFill(color).drawCircle(0, 0, radius);
+			stage.addChild(circle);
+			circle.x = RandomNumb(44,canvas.width-44);
+			circle.y = RandomNumb(140,canvas.height-40);
+			stage.update;
+			
+			/*window[UserId].x = RandomNumb(44,canvas.width-44);
+			window[UserId].y = RandomNumb(140,canvas.height-40);*/
+			createjs.Ticker.addEventListener("tick", onTickHandler);
+			createjs.Ticker.setFPS(30);	
+			socket.emit('connection done',  circle.x, circle.y, color, radius);
+		});
+		
+		socket.on('user done', function(coordx, coordy, plcol, plrad, userid){
+			CreateCircle(coordx, coordy, plcol, plrad, userid);
+		});
+      
+		/*socket.on('sprite change coord', function(UserId, value){
+			window[UserId].x += value;  
+		}); */
+
+		socket.on('show other', function(users){
+			for(user in users){
+				CreateCircle(user, users[user].x, users[user].y, users[user].col, users[user].rad);
+			}       
+		});
+
+		socket.on('user disconnected', function(UserId){
+			stage.removeChild(window[UserId]);
+		});
+				
+		socket.on('moving', function(UserId) {
+			//stage.enableMouseOver(10);
+			//console.log(UserId);
+			
+			stage.on("stagemousemove", function(evt) {
+			//console.log('lolka');
+			//canvas.addEventListener("mouseover",function(evt){
+				
+				createjs.Tween
+					.get(point, { loop: false })
+					.to({ x: evt.stageX - 25, y: evt.stageY - 25 }, 1);
+				createjs.Tween
+					.get(circle)
+					.to({ x: circle.x + ((evt.stageX - circle.x)/10) , y: circle.y + ((evt.stageY - circle.y)/10)}, 100);
+				});
+			socket.emit('moving done', circle.x, circle.y);
+			//}); 
+		});
+		
+		createjs.Ticker.setFPS(60);
+		createjs.Ticker.addEventListener("tick", stage);
+			
+		function onTickHandler(evt) {  
+			stage.update();
+        };
+        window.addEventListener('resize', onResize, false);
+        onResize();
+        function onResize() {
+			canvas.width = window.innerWidth - 44;
+			canvas.height = window.innerHeight - 40;
+			//sprite.x = canvas.width/2 - 44;
+			//sprite.y = canvas.height/2 - 40;
+        };
+		function RandomNumb(min, max){
+			return Math.random() * (max - min) + min;
+		}	
+		
+		function CreateCircle(X,Y,col,rad,Id){
+			var circle = new createjs.Shape();
+			circle.graphics.beginFill(col).drawCircle(0, 0, rad);
+			window[Id] = circle;
+			stage.addChild(window[Id]);
+			window[Id].x = X;
+			window[Id].y = Y;
+			stage.update;
+		};
+    </script>
+  </body>
+</html>
+
+
+
+
